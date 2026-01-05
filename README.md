@@ -1,2 +1,2 @@
-https://raw.githubusercontent.com/rail2025/AetherGon/refs/heads/main/repo.json
-personal best is 31 seconds
+https://raw.githubusercontent.com/rail2025/Aether48/refs/heads/main/repo.json
+'emerging gameplay'
