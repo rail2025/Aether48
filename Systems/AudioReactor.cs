@@ -1,53 +1,54 @@
 using System;
-using AetherGon.Audio;
-using AetherGon.Core.Events;
-using AetherGon.Foundation;
+using Aether48.Audio;
+using Aether48.Core.Events;
+using Aether48.Foundation;
 
-namespace AetherGon.Systems;
+namespace Aether48.Systems;
 
 public class AudioReactor : IDisposable
 {
     private readonly EventBus _eventBus;
     private readonly AudioManager _audioManager;
+    private int _lastScore;
 
     public AudioReactor(EventBus eventBus, AudioManager audioManager)
     {
         _eventBus = eventBus;
         _audioManager = audioManager;
 
-        // Subscribe to Game Events
-        _eventBus.Subscribe<PlayerCrashedEvent>(OnCrash);
-        _eventBus.Subscribe<GameStateChangedEvent>(OnStateChange);
-        _eventBus.Subscribe<GameActionCommand>(OnAction);
-    }
-
-    private void OnCrash(PlayerCrashedEvent evt)
-    {
-        _audioManager.PlaySfx("Sfx.bomb.mp3"); // Ensure this file exists or use "bomb.mp3"
-    }
-
-    private void OnAction(GameActionCommand cmd)
-    {
-        if (cmd.ActionName == "Confirm")
-            _audioManager.PlaySfx("Sfx.shot.wav"); // Use as a "Select" sound
-    }
-
-    private void OnStateChange(GameStateChangedEvent evt)
-    {
-        if (evt.NewState == Core.Entities.GameStatus.Playing)
-        {
-            _audioManager.StartBgmPlaylist();
-        }
-        else if (evt.NewState == Core.Entities.GameStatus.GameOver || evt.NewState == Core.Entities.GameStatus.Paused)
-        {
-            _audioManager.StopBgm();
-        }
+        _eventBus.Subscribe<GridUpdatedEvent>(OnGridUpdated);
+        _eventBus.Subscribe<GameOverEvent>(OnGameOver);
+        _eventBus.Subscribe<GameResetEvent>(OnReset);
     }
 
     public void Dispose()
     {
-        _eventBus.Unsubscribe<PlayerCrashedEvent>(OnCrash);
-        _eventBus.Unsubscribe<GameStateChangedEvent>(OnStateChange);
-        _eventBus.Unsubscribe<GameActionCommand>(OnAction);
+        _eventBus.Unsubscribe<GridUpdatedEvent>(OnGridUpdated);
+        _eventBus.Unsubscribe<GameOverEvent>(OnGameOver);
+        _eventBus.Unsubscribe<GameResetEvent>(OnReset);
+    }
+
+    private void OnGridUpdated(GridUpdatedEvent e)
+    {
+        if (e.Score > _lastScore)
+        {
+            _audioManager.PlaySfx("pop");
+        }
+        else
+        {
+            _audioManager.PlaySfx("move");
+        }
+
+        _lastScore = e.Score;
+    }
+
+    private void OnGameOver(GameOverEvent e)
+    {
+        _audioManager.PlaySfx(e.IsWin ? "win" : "gameover");
+    }
+
+    private void OnReset(GameResetEvent e)
+    {
+        _lastScore = 0;
     }
 }

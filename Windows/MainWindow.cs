@@ -1,103 +1,136 @@
-using AetherGon.Core.Events;
-using AetherGon.Foundation;
-using AetherGon.Systems;
-using AetherGon.UI;
+using Aether48.Core;
+using Aether48.Core.Events;
+using Aether48.Foundation;
+using Aether48.UI;
+using Aether48.Audio; // Added namespace
 using Dalamud.Bindings.ImGui;
-using Dalamud.Game.ClientState.Keys;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using System;
 using System.Numerics;
 
-namespace AetherGon.Windows;
+namespace Aether48.Windows;
 
 public class MainWindow : Window, IDisposable
 {
-    private readonly Plugin _plugin;
-    private readonly TextureManager _textureManager;
-    private readonly RenderService _renderService;
+    private readonly IGridDataSource _dataSource;
+    private readonly ThemeManager _themeManager;
+    private readonly AudioManager _audioManager;
     private readonly EventBus _eventBus;
 
-    public static readonly Vector2 BaseWindowSize = new(540, 720);
-    public static Vector2 ScaledWindowSize => BaseWindowSize * ImGuiHelpers.GlobalScale;
-    public const float HudAreaHeight = 110f;
+    private const float GridPadding = 10f;
+    private const float CellSpacing = 8f;
+    private const int GridSize = 4;
 
-    private bool _switchingToTitle = false;
-
-    public MainWindow(Plugin plugin) : base("AetherGon")
+    public MainWindow(Plugin plugin) : base("Aether48")
     {
-        _plugin = plugin;
-        _textureManager = plugin.Services.Get<TextureManager>();
-        _renderService = plugin.Services.Get<RenderService>();
+        _dataSource = plugin.Services.Get<IGridDataSource>();
+        _themeManager = plugin.Services.Get<ThemeManager>();
+        _audioManager = plugin.Services.Get<AudioManager>();
         _eventBus = plugin.Services.Get<EventBus>();
 
-        this.SizeConstraints = new WindowSizeConstraints
+        SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(300, 300),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+            MinimumSize = new Vector2(300, 400),
+            MaximumSize = new Vector2(600, 800)
         };
+    }
 
-        this.Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+    public void Dispose()
+    {
+    }
+    public override void OnOpen()
+    {
+        _audioManager.StartBgmPlaylist();
+        base.OnOpen();
     }
     public override void OnClose()
     {
-        // Only stop music if we are NOT switching to title
-        if (!_switchingToTitle)
-        {
-            _plugin.AudioManager.EndPlaylist();
-        }
-
-        // Reset flag for next time
-        _switchingToTitle = false;
+        _audioManager.EndPlaylist();
+        base.OnClose();
     }
-    public void Dispose() { }
 
     public override void Draw()
     {
-        _renderService.Draw(() => {
-            _switchingToTitle = true; // Tell OnClose to ignore the stop command
-            this.IsOpen = false;
-            _plugin.TitleWindow.IsOpen = true;
-            _plugin.AudioManager.StartBgmPlaylist();
-        });
+        DrawScoreBoard();
+        DrawControls();
+        DrawGrid();
+    }
 
-        // Volume Slider Overlay
-        var scale = ImGuiHelpers.GlobalScale;
-        ImGui.SetCursorPos(new Vector2(20 * scale, 20 * scale));
-        ImGui.PushItemWidth(80 * scale);
-        var vol = _plugin.Configuration.MusicVolume;
-        if (ImGui.SliderFloat("##MainVol", ref vol, 0.0f, 1.0f, ""))
+    private void DrawScoreBoard()
+    {
+        var scoreText = $"Score: {_dataSource.Score}";
+        var highText = $"Best: {_dataSource.HighScore}";
+
+        ImGui.TextColored(_themeManager.BoardText, "2048");
+
+        var availWidth = ImGui.GetContentRegionAvail().X;
+        var scoreWidth = ImGui.CalcTextSize(scoreText).X;
+        var highWidth = ImGui.CalcTextSize(highText).X;
+
+        ImGui.SameLine(availWidth - scoreWidth - highWidth - 20);
+        ImGui.TextColored(_themeManager.BoardText, scoreText);
+        ImGui.SameLine(availWidth - highWidth);
+        ImGui.TextDisabled(highText);
+
+        ImGui.Separator();
+        ImGui.Spacing();
+    }
+
+    private void DrawControls()
+    {
+        if (ImGui.Button("New Game"))
         {
-            _plugin.Configuration.MusicVolume = vol;
-            _plugin.AudioManager.SetMusicVolume(vol);
-            _plugin.Configuration.Save();
+            _eventBus.Publish(new GameResetEvent());
         }
-        ImGui.PopItemWidth();
+
         ImGui.SameLine();
-        ImGui.TextColored(new Vector4(1, 1, 1, 0.5f), "BGM");
 
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && ImGui.IsAnyItemHovered())
-            ImGui.GetIO().WantCaptureMouse = true;
-
-
-        // Debug Overlay
-        /* 
-        ImGui.SetCursorPos(new Vector2(10, 30));
-
-        // Read directly from Dalamud KeyState for debug
-        bool spaceDown = Plugin.KeyState[VirtualKey.SPACE];
-        bool leftDown = Plugin.KeyState[VirtualKey.A];
-        bool rightDown = Plugin.KeyState[VirtualKey.D];
-
-        ImGui.TextColored(new Vector4(1, 1, 0, 1), "GLOBAL INPUT DEBUG:");
-        ImGui.Text($"Space: {spaceDown}");
-        ImGui.Text($"A / Left: {leftDown}");
-        ImGui.Text($"D / Right: {rightDown}");
-
-        if (ImGui.Button("FORCE START CLICK"))
+        if (ImGui.Button(_themeManager.IsDarkMode ? "Light Mode" : "Dark Mode"))
         {
-            _eventBus.Publish(new GameActionCommand("Confirm"));
+            _themeManager.ToggleTheme();
         }
-       */
+
+        ImGui.Spacing();
+    }
+
+    private void DrawGrid()
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        var p = ImGui.GetCursorScreenPos();
+        var avail = ImGui.GetContentRegionAvail();
+
+        var totalSpacing = (GridSize - 1) * CellSpacing;
+        var boardWidth = avail.X;
+        var tileSize = (boardWidth - totalSpacing) / GridSize;
+
+        var boardSize = new Vector2(boardWidth, boardWidth);
+        drawList.AddRectFilled(p, p + boardSize, ImGui.ColorConvertFloat4ToU32(_themeManager.GridBackground), 6f);
+
+        for (var y = 0; y < GridSize; y++)
+        {
+            for (var x = 0; x < GridSize; x++)
+            {
+                var value = _dataSource.GetTileValue(x, y);
+
+                var xPos = p.X + (x * (tileSize + CellSpacing));
+                var yPos = p.Y + (y * (tileSize + CellSpacing));
+                var start = new Vector2(xPos, yPos);
+                var end = start + new Vector2(tileSize, tileSize);
+
+                var tileColor = value == 0 ? _themeManager.EmptySlotColor : _themeManager.GetTileColor(value);
+                var textColor = _themeManager.GetTextColor(value);
+
+                drawList.AddRectFilled(start, end, ImGui.ColorConvertFloat4ToU32(tileColor), 4f);
+
+                if (value > 0)
+                {
+                    var text = value.ToString();
+                    var textSize = ImGui.CalcTextSize(text);
+                    var textPos = start + (new Vector2(tileSize, tileSize) - textSize) * 0.5f;
+
+                    drawList.AddText(textPos, ImGui.ColorConvertFloat4ToU32(textColor), text);
+                }
+            }
+        }
     }
 }

@@ -1,346 +1,201 @@
 using System;
 using System.Collections.Generic;
-using AetherGon.Core.Entities;
-using AetherGon.Core.Events;
-using AetherGon.Foundation;
-using AetherGon.Systems;
-using Dalamud.Plugin.Services;
+using System.Linq;
+using Aether48.Core.Entities;
+using Aether48.Core.Events;
+using Aether48.Foundation;
 
-namespace AetherGon.Core;
+namespace Aether48.Core;
 
-public class GameEngine : IDisposable
+public class GameEngine : IGridDataSource, IDisposable
 {
     private readonly EventBus _eventBus;
-    private readonly IFramework _framework;
     private readonly Configuration _config;
-
-    private GameStatus _status = GameStatus.Menu;
-    private Player _player = new() { Speed = 8.0f };
-    private List<Wall> _walls = new();
-
-    private float _worldRotation = 0f;
-    private float _rotationDirection = 1.0f;
-    private int _beatsSinceFlip = 0;
-    private float _gameSpeed = 1.0f;
-    private float _survivalTime = 0f;
-
-    private float _stageTime = 0f;
-    private int _stageCount = 1;
-
-    private float _spawnTimer = 0f;
-    private int _patternStep = 0;
-    private int _currentPattern = 0;
-
-    //Track mechanics to insert breathers
-    private int _mechanicsCount = 0;
-
     private readonly Random _random = new();
-    private MoveDirection _currentInput = MoveDirection.None;
-    private float _startSpawnOffset = 0f;
 
-    private readonly BeatSequencer _beatSequencer;
+    public Grid Grid { get; } = new();
+    public int Score { get; private set; }
+    public int HighScore => _config.HighScore;
 
-    public GameEngine(EventBus eventBus, IFramework framework, Configuration config)
+    public GameEngine(EventBus eventBus, Dalamud.Plugin.Services.IFramework _, Configuration config)
     {
         _eventBus = eventBus;
-        _framework = framework;
         _config = config;
 
-        _beatSequencer = new BeatSequencer(_eventBus);
+        _eventBus.Subscribe<MoveRequestEvent>(OnMoveRequest);
+        _eventBus.Subscribe<GameResetEvent>(OnResetRequest);
 
-        _eventBus.Subscribe<MovementCommand>(OnMovement);
-        _eventBus.Subscribe<GameActionCommand>(OnAction);
-        _eventBus.Subscribe<BeatPulseEvent>(OnBeat);
-        _framework.Update += OnUpdate;
-
-        _walls.Add(new Wall { Angle = 0, Width = MathF.PI / 3, Distance = 400f });
+        Reset();
     }
 
-    private void OnUpdate(IFramework framework)
+    public int GetTileValue(int x, int y) => Grid[x, y]?.Value ?? 0;
+
+    public void Dispose()
     {
-        var dt = (float)framework.UpdateDelta.TotalSeconds;
+        _eventBus.Unsubscribe<MoveRequestEvent>(OnMoveRequest);
+        _eventBus.Unsubscribe<GameResetEvent>(OnResetRequest);
+    }
 
-        _worldRotation += 0.5f * _rotationDirection * dt;
+    private void OnMoveRequest(MoveRequestEvent e) => Move(e.Direction);
+    private void OnResetRequest(GameResetEvent e) => Reset();
 
-        if (_status == GameStatus.Playing)
+    public void Reset()
+    {
+        Grid.Clear();
+        Score = 0;
+        SpawnTile();
+        SpawnTile();
+        PublishUpdate();
+    }
+
+    public void Move(MoveDirection direction)
+    {
+        var vector = GetVector(direction);
+        var traversalX = BuildTraversals(vector.X);
+        var traversalY = BuildTraversals(vector.Y);
+
+        var moved = false;
+        var scoreIncrease = 0;
+
+        PrepareTiles();
+
+        foreach (var x in traversalX)
         {
-            _survivalTime += dt;
-            _beatSequencer.Update(_survivalTime);
-            _stageTime += dt;
-
-            if (_stageTime > 60f)
+            foreach (var y in traversalY)
             {
-                _stageTime = 0f;
-                _stageCount++;
-                Plugin.Log.Info($"[GameEngine] Stage {_stageCount} Started!");
-            }
+                var cell = Grid[x, y];
+                if (cell == null) continue;
 
-            // CHANGE: Difficulty Math
-            float baseVal = 0.5f;
-            float rampVal = 0.7f;
+                var (farthest, next) = FindFarthestPosition(x, y, vector);
 
-            switch (_config.SelectedDifficulty)
-            {
-                case Difficulty.Easy:
-                    baseVal = 0.4f;
-                    rampVal = 0.4f;
-                    break;
-                case Difficulty.Hard:
-                    baseVal = 0.5f;
-                    rampVal = 0.7f;
-                    break;
-                case Difficulty.Insanity:
-                    baseVal = 0.8f;
-                    rampVal = 1.2f;
-                    break;
-            }
-
-            float speedStart = baseVal + ((_stageCount - 1) * 0.05f);
-            float ramp = (_stageTime / 60f) * rampVal;
-            _gameSpeed = speedStart + ramp;
-
-            if (_startSpawnOffset > 0f)
-            {
-                _startSpawnOffset -= (250f * _gameSpeed) * dt;
-                if (_startSpawnOffset < 0f) _startSpawnOffset = 0f;
-            }
-
-            UpdatePlayerPhysics(dt);
-            UpdateSpawner(dt);
-            CheckCollisions();
-        }
-        else
-        {
-            _gameSpeed = 0.5f;
-            UpdateSpawner(dt);
-        }
-
-        UpdateWallPhysics(dt);
-
-        _eventBus.Publish(new WorldUpdatedEvent(_player, _walls, _worldRotation, _survivalTime, _status));
-        _currentInput = MoveDirection.None;
-    }
-    private void OnBeat(BeatPulseEvent evt)
-    {
-        _beatsSinceFlip++;
-        if (_beatsSinceFlip >= 4 && _random.NextDouble() > 0.7)
-        {
-            _rotationDirection *= -1;
-            _beatsSinceFlip = 0;
-        }
-    }
-    private void UpdateSpawner(float dt)
-    {
-        _spawnTimer -= dt;
-        if (_spawnTimer <= 0)
-        {
-            SpawnNextPattern();
-        }
-    }
-
-    private void SpawnNextPattern()
-    {
-        // Start New Pattern
-        if (_patternStep <= 0)
-        {
-            _currentPattern = _random.Next(0, 6);
-            _patternStep = _random.Next(6, 14);
-            _mechanicsCount++; // Increment counter
-        }
-
-        float speedMult = _status == GameStatus.Playing ? 1.0f : 2.5f;
-        float baseDelay = 0.8f / (_gameSpeed * 0.8f);
-
-        float distance = 1800f - _startSpawnOffset;
-
-        // Spawn Logic (Intra-Pattern Timing)
-        switch (_currentPattern)
-        {
-            case 0: // Random Lanes
-                SpawnWall(GetRandomLane(), distance);
-                _spawnTimer = baseDelay * 0.25f;
-                break;
-
-            case 1: // Spiral
-                int spiralLane = _patternStep % 6;
-                SpawnWall(spiralLane, distance);
-                _spawnTimer = baseDelay * 0.15f;
-                break;
-
-            case 2: // The "C" (Barrage)
-                int gap = _random.Next(0, 6);
-                for (int i = 0; i < 6; i++)
+                if (next.X != -1 && Grid[next.X, next.Y]?.Value == cell.Value && Grid[next.X, next.Y]?.MergedFrom == null)
                 {
-                    if (i == gap) continue;
-                    SpawnWall(i, distance);
-                }
-                _spawnTimer = baseDelay * 1.5f;
-                _patternStep -= 4;
-                break;
+                    var merged = new Tile(cell.Value * 2)
+                    {
+                        MergedFrom = new[] { Grid[next.X, next.Y]!, cell }
+                    };
 
-            case 3: // Alternating
-                int offset = (_patternStep % 2);
-                for (int i = 0; i < 6; i += 2)
+                    if (merged.Value == 1024 && !_config.UnlockedBonusTracks.Contains(1))
+                    {
+                        _config.UnlockedBonusTracks.Add(1);
+                        _config.Save();
+                    }
+
+                    Grid[next.X, next.Y] = merged;
+                    Grid[x, y] = null;
+
+                    cell.PreviousPosition = (next.X, next.Y);
+                    scoreIncrease += merged.Value;
+                    moved = true;
+                }
+                else
                 {
-                    SpawnWall(i + offset, distance);
+                    if (farthest.X == x && farthest.Y == y) continue;
+
+                    Grid[farthest.X, farthest.Y] = cell;
+                    Grid[x, y] = null;
+                    moved = true;
                 }
-                _spawnTimer = baseDelay * 0.4f;
-                break;
+            }
+        }
 
-            case 4: // Tunnel
-                int safeLane = (_patternStep % 6);
-                if (_random.NextDouble() > 0.5) safeLane = 5 - safeLane;
+        if (moved)
+        {
+            Score += scoreIncrease;
+            if (Score > _config.HighScore)
+            {
+                _config.HighScore = Score;
+                _config.Save();
+            }
 
-                for (int i = 0; i < 6; i++)
+            SpawnTile();
+            PublishUpdate();
+
+            if (!MovesAvailable())
+            {
+                _eventBus.Publish(new GameOverEvent(false, Score));
+            }
+        }
+    }
+
+    private void SpawnTile()
+    {
+        var empty = Grid.GetEmptyCells();
+        if (empty.Count == 0) return;
+        var (x, y) = empty[_random.Next(empty.Count)];
+        Grid[x, y] = new Tile(_random.NextDouble() < 0.9 ? 2 : 4);
+    }
+
+    private void PrepareTiles()
+    {
+        for (var x = 0; x < Grid.Size; x++)
+        {
+            for (var y = 0; y < Grid.Size; y++)
+            {
+                if (Grid[x, y] is { } tile)
                 {
-                    if (i == safeLane) continue;
-                    SpawnWall(i, distance);
+                    tile.MergedFrom = null;
+                    tile.PreviousPosition = null;
                 }
-                _spawnTimer = baseDelay * 0.35f;
-                break;
-
-            case 5: // Ladder
-                int start = (_patternStep * 2) % 6;
-                SpawnWall(start, distance);
-                SpawnWall((start + 1) % 6, distance);
-                _spawnTimer = baseDelay * 0.25f;
-                break;
-        }
-
-        _patternStep--;
-
-        // Inter-Pattern Logic (The "Gap" Control)
-        // If the pattern just finished...
-        if (_patternStep <= 0)
-        {
-            if (_mechanicsCount % 3 == 0)
-            {
-                // BREATHER: Long pause every 3 mechanics
-                _spawnTimer = baseDelay * 4.0f;
-            }
-            else
-            {
-                // NO GAP: Seamless transition to next mechanic
-                _spawnTimer = baseDelay * 0.5f;
             }
         }
     }
 
-    private int GetRandomLane() => _random.Next(0, 6);
-
-    private void SpawnWall(int lane, float dist)
+    private (int X, int Y) GetVector(MoveDirection dir) => dir switch
     {
-        float angle = (lane % 6) * (MathF.PI / 3);
-        _walls.Add(new Wall
-        {
-            Angle = angle,
-            Width = MathF.PI / 3,
-            Distance = dist
-        });
+        MoveDirection.Up => (0, -1),
+        MoveDirection.Down => (0, 1),
+        MoveDirection.Left => (-1, 0),
+        MoveDirection.Right => (1, 0),
+        _ => (0, 0)
+    };
+
+    private List<int> BuildTraversals(int vector)
+    {
+        var list = Enumerable.Range(0, Grid.Size).ToList();
+        if (vector == 1) list.Reverse();
+        return list;
     }
 
-    private void UpdateWallPhysics(float dt)
+    private ((int X, int Y) Farthest, (int X, int Y) Next) FindFarthestPosition(int x, int y, (int X, int Y) vector)
     {
-        for (int i = _walls.Count - 1; i >= 0; i--)
+        int prevX, prevY;
+        do
         {
-            _walls[i].Distance -= 250f * _gameSpeed * dt;
-            if (_walls[i].Distance + 30f < 45f) // Matches new Hexagon Radius
-            {
-                _walls.RemoveAt(i);
-            }
+            prevX = x;
+            prevY = y;
+            x += vector.X;
+            y += vector.Y;
         }
+        while (Grid.IsWithinBounds(x, y) && !Grid.IsCellOccupied(x, y));
+
+        return ((prevX, prevY), (x, y));
     }
 
-    private void UpdatePlayerPhysics(float dt)
-    {
-        if (_currentInput == MoveDirection.Left) _player.Angle -= _player.Speed * dt;
-        if (_currentInput == MoveDirection.Right) _player.Angle += _player.Speed * dt;
+    private bool MovesAvailable() => Grid.GetEmptyCells().Any() || TileMatchesAvailable();
 
-        if (_player.Angle < 0) _player.Angle += MathF.Tau;
-        if (_player.Angle > MathF.Tau) _player.Angle -= MathF.Tau;
-    }
-
-    private bool CheckCollisions()
+    private bool TileMatchesAvailable()
     {
-        foreach (var wall in _walls)
+        for (var x = 0; x < Grid.Size; x++)
         {
-            if (wall.Distance > _player.Radius + 15) continue;
-            if (wall.Distance < _player.Radius - 15) continue;
-
-            float angleDiff = MathF.Abs(_player.Angle - wall.Angle);
-            if (angleDiff > MathF.PI) angleDiff = MathF.Tau - angleDiff;
-
-            if (angleDiff < (wall.Width * 0.85f) / 2)
+            for (var y = 0; y < Grid.Size; y++)
             {
-                HandleGameOver();
-                return true;
+                var tile = Grid[x, y];
+                if (tile == null) continue;
+
+                foreach (var dir in new[] { MoveDirection.Down, MoveDirection.Right })
+                {
+                    var v = GetVector(dir);
+                    var tx = x + v.X;
+                    var ty = y + v.Y;
+
+                    if (Grid.IsWithinBounds(tx, ty) && Grid[tx, ty]?.Value == tile.Value)
+                        return true;
+                }
             }
         }
         return false;
     }
 
-    private void HandleGameOver()
-    {
-        Plugin.Log.Info($"[GameEngine] Game Over! Time: {_survivalTime:0.00}s");
-
-        if (!_config.HighScores.ContainsKey(_config.SelectedDifficulty))
-        {
-            _config.HighScores[_config.SelectedDifficulty] = 0f;
-        }
-
-        if (_survivalTime > _config.HighScores[_config.SelectedDifficulty])
-        {
-            _config.HighScores[_config.SelectedDifficulty] = _survivalTime;
-            _config.Save();
-            Plugin.Log.Info($"[GameEngine] New High Score: {_survivalTime}");
-        }
-
-        SetStatus(GameStatus.GameOver);
-        _eventBus.Publish(new PlayerCrashedEvent());
-    }
-
-    private void OnMovement(MovementCommand cmd) => _currentInput = cmd.Direction;
-
-    private void OnAction(GameActionCommand cmd)
-    {
-        if (cmd.ActionName == "Confirm" && _status != GameStatus.Playing)
-        {
-            StartGame();
-        }
-        else if (cmd.ActionName == "Pause" && _status == GameStatus.Playing)
-        {
-            SetStatus(GameStatus.Paused);
-        }
-    }
-
-    private void StartGame()
-    {
-        _walls.Clear();
-        _player.Angle = 0;
-        _survivalTime = 0f;
-        _beatSequencer.Reset();
-        _stageTime = 0f;
-        _stageCount = 1;
-        _spawnTimer = 0f;
-        _patternStep = 0;
-        _mechanicsCount = 0; // Reset counter
-
-        _startSpawnOffset = 1300f;
-
-        SetStatus(GameStatus.Playing);
-    }
-
-    private void SetStatus(GameStatus newStatus)
-    {
-        _status = newStatus;
-        _eventBus.Publish(new GameStateChangedEvent(_status));
-    }
-
-    public void Dispose()
-    {
-        _framework.Update -= OnUpdate;
-        _eventBus.Unsubscribe<MovementCommand>(OnMovement);
-        _eventBus.Unsubscribe<GameActionCommand>(OnAction);
-        _eventBus.Unsubscribe<BeatPulseEvent>(OnBeat);
-    }
+    private void PublishUpdate() => _eventBus.Publish(new GridUpdatedEvent(Grid.GetValues(), Score, HighScore));
 }

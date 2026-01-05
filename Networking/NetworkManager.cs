@@ -3,12 +3,12 @@ using System.IO;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using AetherGon.Serialization;
+using Aether48.Serialization;
 
-namespace AetherGon.Networking
+namespace Aether48.Networking
 {
     /// <summary>
-    /// Manages the WebSocket connection for AetherGon multiplayer.
+    /// Manages the WebSocket connection for Aether48 multiplayer.
     /// </summary>
     public class NetworkManager : IDisposable
     {

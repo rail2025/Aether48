@@ -1,4 +1,4 @@
-namespace AetherGon.Game;
+namespace Aether48.Game;
 
 /// <summary>
 /// Represents the different states the game can be in.

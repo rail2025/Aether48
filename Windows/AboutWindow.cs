@@ -6,7 +6,7 @@ using Dalamud.Utility;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 
-namespace AetherGon.Windows;
+namespace Aether48.Windows;
 
 /// <summary>
 /// A window to display information about the plugin, such as version, author, and support links.
@@ -16,7 +16,7 @@ public class AboutWindow : Window, IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="AboutWindow"/> class.
     /// </summary>
-    public AboutWindow() : base("About AetherGon")
+    public AboutWindow() : base("About Aether48")
     {
         // CHANGE: Increased window width to prevent text wrapping.
         this.Size = new Vector2(380, 250);
@@ -36,7 +36,7 @@ public class AboutWindow : Window, IDisposable
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
         ImGui.Text($"Version: {version}");
-        ImGui.Text("Release Date: 1/1/2026");
+        ImGui.Text("Release Date: 1/5/2026");
         ImGui.Separator();
 
         ImGui.Text("Created by: rail");
@@ -59,7 +59,7 @@ public class AboutWindow : Window, IDisposable
             
             if (ImGui.Button("Bug report/\nFeature request", new Vector2(btnWidthFull, bugReportButtonHeight)))
             {
-                Util.OpenLink("https://github.com/rail2025/AetherGon/issues");
+                Util.OpenLink("https://github.com/rail2025/Aether48/issues");
             }
         }
         if (ImGui.IsItemHovered())

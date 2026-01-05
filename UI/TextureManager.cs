@@ -8,7 +8,7 @@ using System.Linq;
 using System.IO;
 using System.Reflection;
 
-namespace AetherGon.UI;
+namespace Aether48.UI;
 
 public class TextureManager : IDisposable
 {
@@ -28,8 +28,7 @@ public class TextureManager : IDisposable
 
     private void LoadTextures()
     {
-        // Placeholder for loading logic
-        // Use _log.Info("Loading textures..."); instead of Plugin.Log.Info
+        
     }
 
     public IDalamudTextureWrap? GetBackground(int index)

@@ -1,4 +1,4 @@
-namespace AetherGon.Networking
+namespace Aether48.Networking
 {
     /// <summary>
     /// Defines the different types of messages that can be sent between the client and server.

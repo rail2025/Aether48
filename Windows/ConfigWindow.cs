@@ -2,17 +2,17 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
-using AetherGon.Audio;
+using Aether48.Audio;
 
 
-namespace AetherGon.Windows;
+namespace Aether48.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Configuration configuration;
     private readonly AudioManager audioManager;
 
-    public ConfigWindow(Plugin plugin, AudioManager audioManager) : base("AetherGon Configuration")
+    public ConfigWindow(Plugin plugin, AudioManager audioManager) : base("Aether48 Configuration")
     {
         this.Size = new Vector2(300, 250);
         this.SizeCondition = ImGuiCond.FirstUseEver;

@@ -3,7 +3,7 @@ using Dalamud.Plugin;
 using System;
 using System.Collections.Generic;
 
-namespace AetherGon;
+namespace Aether48;
 
 public enum Difficulty
 {
@@ -17,36 +17,34 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
 
-    // --- New Architecture Settings ---
-    public bool ShowGuideLines { get; set; } = true;
+    // Aether48 Settings
+    public int HighScore { get; set; }
+    public int ThemeId { get; set; }
 
-    // Changed: Store scores per difficulty
-    public Dictionary<Difficulty, float> HighScores { get; set; } = new();
-
-    public Difficulty SelectedDifficulty { get; set; } = Difficulty.Hard;
-
-    public bool IsSfxMuted { get; set; } = false;
-    public bool IsBgmMuted { get; set; } = false;
+    // Audio Settings
+    public bool IsSfxMuted { get; set; }
+    public bool IsBgmMuted { get; set; }
     public float MusicVolume { get; set; } = 0.5f;
+
     public List<int> UnlockedBonusTracks { get; set; } = new();
-
+    public Dictionary<Difficulty, float> HighScores { get; set; } = new();
+    public Difficulty SelectedDifficulty { get; set; } = Difficulty.Hard;
     public bool IsGameWindowLocked { get; set; } = false;
-
     public bool OpenOnDeath { get; set; } = false;
     public bool OpenInQueue { get; set; } = false;
     public bool OpenInPartyFinder { get; set; } = false;
     public bool OpenDuringCrafting { get; set; } = false;
 
     [NonSerialized]
-    private IDalamudPluginInterface? PluginInterface;
+    private IDalamudPluginInterface? _pluginInterface;
 
     public void Initialize(IDalamudPluginInterface pluginInterface)
     {
-        this.PluginInterface = pluginInterface;
+        _pluginInterface = pluginInterface;
     }
 
     public void Save()
     {
-        this.PluginInterface!.SavePluginConfig(this);
+        _pluginInterface!.SavePluginConfig(this);
     }
 }

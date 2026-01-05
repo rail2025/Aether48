@@ -1,47 +1,53 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
+using Dalamud.Plugin.Services;
 
-namespace AetherGon.Foundation;
+namespace Aether48.Foundation;
 
 public class EventBus
 {
-    private readonly ConcurrentDictionary<Type, List<object>> _subscribers = new();
+    private readonly Dictionary<Type, List<object>> _subscribers = new();
+    private readonly IPluginLog? _log;
 
-    // Publishes an event to all subscribers of type T
-    public void Publish<T>(T eventMessage)
+    public EventBus(IPluginLog? log = null)
     {
-        var type = typeof(T);
-        if (_subscribers.TryGetValue(type, out var handlers))
+        _log = log;
+    }
+
+    public void Subscribe<T>(Action<T> handler)
+    {
+        if (!_subscribers.TryGetValue(typeof(T), out var handlers))
         {
-            // Snapshot the handlers to avoid modification during iteration
-            var currentHandlers = handlers.ToList();
-            foreach (var handler in currentHandlers)
-            {
-                ((Action<T>)handler)(eventMessage);
-            }
+            handlers = new List<object>();
+            _subscribers[typeof(T)] = handlers;
+        }
+        handlers.Add(handler);
+    }
+
+    public void Unsubscribe<T>(Action<T> handler)
+    {
+        if (_subscribers.TryGetValue(typeof(T), out var handlers))
+        {
+            handlers.Remove(handler);
         }
     }
 
-    // Subscribes a handler to event type T
-    public void Subscribe<T>(Action<T> handler)
+    public void Publish<T>(T eventMessage)
     {
-        var type = typeof(T);
-        _subscribers.AddOrUpdate(type,
-            _ => new List<object> { handler },
-            (_, list) => { lock (list) { list.Add(handler); } return list; });
-    }
+        if (!_subscribers.TryGetValue(typeof(T), out var handlers)) return;
 
-    // Unsubscribes a handler from event type T
-    public void Unsubscribe<T>(Action<T> handler)
-    {
-        var type = typeof(T);
-        if (_subscribers.TryGetValue(type, out var list))
+        foreach (var handlerObj in handlers.ToArray())
         {
-            lock (list)
+            if (handlerObj is Action<T> handler)
             {
-                list.Remove(handler);
+                try
+                {
+                    handler(eventMessage);
+                }
+                catch (Exception ex)
+                {
+                    _log?.Error(ex, $"Error handling event {typeof(T).Name}");
+                }
             }
         }
     }

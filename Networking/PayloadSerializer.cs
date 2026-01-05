@@ -1,8 +1,8 @@
 using System;
 using System.IO;
-using AetherGon.Networking;
+using Aether48.Networking;
 
-namespace AetherGon.Serialization
+namespace Aether48.Serialization
 {
     /// <summary>
     /// Handles the binary serialization and deserialization of the NetworkPayload object.

@@ -1,10 +1,9 @@
 using System.Collections.Generic;
-using AetherGon.Core.Entities;
 
-namespace AetherGon.Core.Events;
+namespace Aether48.Core.Events;
 
-public record GameStateChangedEvent(GameStatus NewState);
-public record PlayerCrashedEvent;
-// Added TimeAlive parameter
-public record WorldUpdatedEvent(Player Player, List<Wall> Walls, float WorldRotation, float TimeAlive, GameStatus Status);
-public record BeatPulseEvent;
+public record struct GridUpdatedEvent(int[,] GridValues, int Score, int HighScore);
+
+public record struct GameOverEvent(bool IsWin, int FinalScore);
+
+public record struct GameResetEvent;

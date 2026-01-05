@@ -1,17 +1,17 @@
 using System;
 using System.Numerics;
-using AetherGon.UI;
+using Aether48.UI;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 
-namespace AetherGon.Windows;
+namespace Aether48.Windows;
 
 public class TitleWindow : Window, IDisposable
 {
     private readonly Plugin _plugin;
     private readonly TextureManager _textureManager;
 
-    public TitleWindow(Plugin plugin) : base("AetherGon Title###AetherGonTitleWindow")
+    public TitleWindow(Plugin plugin) : base("Aether48 Title###Aether48TitleWindow")
     {
         _plugin = plugin;
         _textureManager = plugin.Services.Get<TextureManager>();
@@ -37,7 +37,7 @@ public class TitleWindow : Window, IDisposable
         // --- Background Image (Placeholder) ---
         // Uncomment when you have an icon/bg loaded in TextureManager
         
-        var bgTexture = _textureManager.GetIcon("Images.aethergontitle.png");
+        var bgTexture = _textureManager.GetIcon("Images.aether48title.png");
         if (bgTexture != null)
         {
             var windowPos = ImGui.GetWindowPos();
@@ -68,7 +68,7 @@ public class TitleWindow : Window, IDisposable
         ImGui.SetCursorPos(new Vector2((windowWidth - buttonWidth) * 0.5f, startY));
 
         // Start Game
-        if (DrawButtonWithOutline("StartGame", "ENTER THE HEXAGON", buttonSize))
+        if (DrawButtonWithOutline("StartGame", "START", buttonSize))
         {
             this.IsOpen = false;
             _plugin.ToggleMainUI(); // Opens the Game Window

@@ -1,26 +1,89 @@
-using System.Numerics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace AetherGon.Core.Entities;
+namespace Aether48.Core.Entities;
 
-public class Player
+public class Tile
 {
-    public float Angle { get; set; } // In Radians (0 to 2PI)
-    public float Radius { get; set; } = 55f; // Fixed distance from center
-    public float Speed { get; set; } = 4.5f; // Radians per second
+    public Guid Id { get; } = Guid.NewGuid();
+    public int Value { get; set; }
+
+    public Tile[]? MergedFrom { get; set; }
+
+    public (int X, int Y)? PreviousPosition { get; set; }
+
+    public Tile(int value)
+    {
+        Value = value;
+    }
 }
 
-public class Wall
+public class Grid
 {
-    public float Angle { get; set; } // Center angle of the wall
-    public float Width { get; set; } // Arc length/span in Radians
-    public float Distance { get; set; } // Current distance from center
-    public int SideCount { get; set; } = 6; // Which shape (Hexagon, etc.)
-}
+    public const int Size = 4;
+    private readonly Tile?[,] _cells;
 
-public enum GameStatus
-{
-    Menu,
-    Playing,
-    GameOver,
-    Paused
+    public Grid()
+    {
+        _cells = new Tile?[Size, Size];
+    }
+
+    public void Clear()
+    {
+        Array.Clear(_cells, 0, _cells.Length);
+    }
+
+    public Tile? this[int x, int y]
+    {
+        get => IsWithinBounds(x, y) ? _cells[x, y] : null;
+        set
+        {
+            if (IsWithinBounds(x, y))
+            {
+                _cells[x, y] = value;
+            }
+        }
+    }
+
+    public bool IsWithinBounds(int x, int y)
+    {
+        return x >= 0 && x < Size && y >= 0 && y < Size;
+    }
+
+    public bool IsCellOccupied(int x, int y)
+    {
+        return IsWithinBounds(x, y) && _cells[x, y] != null;
+    }
+
+    public List<(int X, int Y)> GetEmptyCells()
+    {
+        var emptyCells = new List<(int X, int Y)>();
+
+        for (var x = 0; x < Size; x++)
+        {
+            for (var y = 0; y < Size; y++)
+            {
+                if (_cells[x, y] == null)
+                {
+                    emptyCells.Add((x, y));
+                }
+            }
+        }
+
+        return emptyCells;
+    }
+
+    public int[,] GetValues()
+    {
+        var values = new int[Size, Size];
+        for (var y = 0; y < Size; y++)
+        {
+            for (var x = 0; x < Size; x++)
+            {
+                values[x, y] = _cells[x, y]?.Value ?? 0;
+            }
+        }
+        return values;
+    }
 }
