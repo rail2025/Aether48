@@ -1,0 +1,103 @@
+using AetherGon.Core.Events;
+using AetherGon.Foundation;
+using AetherGon.Systems;
+using AetherGon.UI;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Keys;
+using Dalamud.Interface.Utility;
+using Dalamud.Interface.Windowing;
+using System;
+using System.Numerics;
+
+namespace AetherGon.Windows;
+
+public class MainWindow : Window, IDisposable
+{
+    private readonly Plugin _plugin;
+    private readonly TextureManager _textureManager;
+    private readonly RenderService _renderService;
+    private readonly EventBus _eventBus;
+
+    public static readonly Vector2 BaseWindowSize = new(540, 720);
+    public static Vector2 ScaledWindowSize => BaseWindowSize * ImGuiHelpers.GlobalScale;
+    public const float HudAreaHeight = 110f;
+
+    private bool _switchingToTitle = false;
+
+    public MainWindow(Plugin plugin) : base("AetherGon")
+    {
+        _plugin = plugin;
+        _textureManager = plugin.Services.Get<TextureManager>();
+        _renderService = plugin.Services.Get<RenderService>();
+        _eventBus = plugin.Services.Get<EventBus>();
+
+        this.SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = new Vector2(300, 300),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+        };
+
+        this.Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+    }
+    public override void OnClose()
+    {
+        // Only stop music if we are NOT switching to title
+        if (!_switchingToTitle)
+        {
+            _plugin.AudioManager.EndPlaylist();
+        }
+
+        // Reset flag for next time
+        _switchingToTitle = false;
+    }
+    public void Dispose() { }
+
+    public override void Draw()
+    {
+        _renderService.Draw(() => {
+            _switchingToTitle = true; // Tell OnClose to ignore the stop command
+            this.IsOpen = false;
+            _plugin.TitleWindow.IsOpen = true;
+            _plugin.AudioManager.StartBgmPlaylist();
+        });
+
+        // Volume Slider Overlay
+        var scale = ImGuiHelpers.GlobalScale;
+        ImGui.SetCursorPos(new Vector2(20 * scale, 20 * scale));
+        ImGui.PushItemWidth(80 * scale);
+        var vol = _plugin.Configuration.MusicVolume;
+        if (ImGui.SliderFloat("##MainVol", ref vol, 0.0f, 1.0f, ""))
+        {
+            _plugin.Configuration.MusicVolume = vol;
+            _plugin.AudioManager.SetMusicVolume(vol);
+            _plugin.Configuration.Save();
+        }
+        ImGui.PopItemWidth();
+        ImGui.SameLine();
+        ImGui.TextColored(new Vector4(1, 1, 1, 0.5f), "BGM");
+
+        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && ImGui.IsAnyItemHovered())
+            ImGui.GetIO().WantCaptureMouse = true;
+
+
+        // Debug Overlay
+        /* 
+        ImGui.SetCursorPos(new Vector2(10, 30));
+
+        // Read directly from Dalamud KeyState for debug
+        bool spaceDown = Plugin.KeyState[VirtualKey.SPACE];
+        bool leftDown = Plugin.KeyState[VirtualKey.A];
+        bool rightDown = Plugin.KeyState[VirtualKey.D];
+
+        ImGui.TextColored(new Vector4(1, 1, 0, 1), "GLOBAL INPUT DEBUG:");
+        ImGui.Text($"Space: {spaceDown}");
+        ImGui.Text($"A / Left: {leftDown}");
+        ImGui.Text($"D / Right: {rightDown}");
+
+        if (ImGui.Button("FORCE START CLICK"))
+        {
+            _eventBus.Publish(new GameActionCommand("Confirm"));
+        }
+       */
+    }
+}
