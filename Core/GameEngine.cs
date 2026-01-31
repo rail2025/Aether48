@@ -21,10 +21,8 @@ public class GameEngine : IGridDataSource, IDisposable
     {
         _eventBus = eventBus;
         _config = config;
-
         _eventBus.Subscribe<MoveRequestEvent>(OnMoveRequest);
         _eventBus.Subscribe<GameResetEvent>(OnResetRequest);
-
         Reset();
     }
 
@@ -53,7 +51,6 @@ public class GameEngine : IGridDataSource, IDisposable
         var vector = GetVector(direction);
         var traversalX = BuildTraversals(vector.X);
         var traversalY = BuildTraversals(vector.Y);
-
         var moved = false;
         var scoreIncrease = 0;
         var turnHasMerge = false;
@@ -67,16 +64,13 @@ public class GameEngine : IGridDataSource, IDisposable
             {
                 var cell = Grid[x, y];
                 if (cell == null) continue;
-
                 var (farthest, next) = FindFarthestPosition(x, y, vector);
-
                 if (next.X != -1 && Grid[next.X, next.Y]?.Value == cell.Value && Grid[next.X, next.Y]?.MergedFrom == null)
                 {
                     var merged = new Tile(cell.Value * 2)
                     {
                         MergedFrom = new[] { Grid[next.X, next.Y]!, cell }
                     };
-
                     if (merged.Value == 1024 && !_config.UnlockedBonusTracks.Contains(1))
                     {
                         _config.UnlockedBonusTracks.Add(1);
@@ -95,7 +89,6 @@ public class GameEngine : IGridDataSource, IDisposable
                 {
                     if (farthest.X == x && farthest.Y == y) continue;
 
-                    // If we moved, check if we stopped because of a collision with another tile
                     if (Grid.IsWithinBounds(next.X, next.Y))
                     {
                         turnHasCollision = true;
@@ -118,10 +111,8 @@ public class GameEngine : IGridDataSource, IDisposable
             }
 
             _eventBus.Publish(new GameInteractionEvent(turnHasMerge, turnHasCollision));
-
             SpawnTile();
             PublishUpdate();
-
             if (!MovesAvailable())
             {
                 _eventBus.Publish(new GameOverEvent(false, Score));

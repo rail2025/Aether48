@@ -31,18 +31,6 @@ public class TextureManager : IDisposable
         
     }
 
-    public IDalamudTextureWrap? GetBackground(int index)
-    {
-        if (index < 0 || index >= _backgroundTextures.Count) return null;
-        return _backgroundTextures[index];
-    }
-
-    public int GetBackgroundCount() => _backgroundTextures.Count;
-
-    public IDalamudTextureWrap? GetBubbleTexture(int type)
-    {
-        return _bubbleTextures.TryGetValue(type, out var tex) ? tex : null;
-    }
 
     public IDalamudTextureWrap? GetIcon(string name)
     {

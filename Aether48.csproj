@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <PropertyGroup>
-    <Version>0.1.0.1</Version>
+    <Version>1.8.0.8</Version>
     <TargetFramework>net10.0</TargetFramework>
     <Description>A 2048 clone. Open with /a48.</Description>
-    <PackageProjectUrl>https://github.com/rail2025/Aethergon</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/rail2025/Aether48</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Images\background 2.png" />
-    <EmbeddedResource Include="Images\background 3.png" />
-    <EmbeddedResource Include="Images\background.png" />
     <EmbeddedResource Include="Images\icon.png" />
     <EmbeddedResource Include="Music\bgm1.mp3" />
     <EmbeddedResource Include="Music\bgm2.mp3" />
@@ -22,9 +19,6 @@
     <EmbeddedResource Include="Music\bgm4.mp3" />
     <EmbeddedResource Include="icon.png" />
     <EmbeddedResource Include="Images\aether48title.png" />
-    <EmbeddedResource Include="bgmaudacitylabelbeats.txt">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
     <Content Include="repo.json" />
     <EmbeddedResource Include="Sfx\advance.wav" />
     <EmbeddedResource Include="Sfx\pop.wav" />

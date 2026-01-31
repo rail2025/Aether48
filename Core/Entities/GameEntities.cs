@@ -8,11 +8,8 @@ public class Tile
 {
     public Guid Id { get; } = Guid.NewGuid();
     public int Value { get; set; }
-
     public Tile[]? MergedFrom { get; set; }
-
     public (int X, int Y)? PreviousPosition { get; set; }
-
     public Tile(int value)
     {
         Value = value;

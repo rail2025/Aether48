@@ -17,18 +17,15 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
 
-    // Aether48 Settings
     public int HighScore { get; set; }
     public int ThemeId { get; set; }
 
-    // Audio Settings
     public bool IsSfxMuted { get; set; }
     public bool IsBgmMuted { get; set; }
     public float MusicVolume { get; set; } = 0.5f;
 
     public List<int> UnlockedBonusTracks { get; set; } = new();
     public Dictionary<Difficulty, float> HighScores { get; set; } = new();
-    public Difficulty SelectedDifficulty { get; set; } = Difficulty.Hard;
     public bool IsGameWindowLocked { get; set; } = false;
     public bool OpenOnDeath { get; set; } = false;
     public bool OpenInQueue { get; set; } = false;

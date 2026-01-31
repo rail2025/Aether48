@@ -17,12 +17,8 @@ public class RenderService : IDisposable
         _textureManager = textureManager;
         _config = config;
 
-        // Subscriptions here later for visual effects
-        // _eventBus.Subscribe<GridUpdatedEvent>(OnGridUpdate);
     }
 
     public void Dispose()
-    {
-        // Cleanup subscriptions here
-    }
+    {}
 }

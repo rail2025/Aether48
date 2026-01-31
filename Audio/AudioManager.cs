@@ -103,7 +103,6 @@ public class AudioManager : IDisposable
         var defaultTracks = this.allMusicTracks.Where(t => !t.StartsWith("bonus_")).ToList();
         this.bgmPlaylist.AddRange(defaultTracks);
 
-        // Load any tracks that were previously unlocked from the config file
         foreach (var trackNumber in this.configuration.UnlockedBonusTracks)
         {
             var trackName = $"bonus_{trackNumber}.mp3";
@@ -117,22 +116,6 @@ public class AudioManager : IDisposable
         if (this.configuration.IsBgmMuted || !this.bgmPlaylist.Any()) return;
         currentTrackIndex = 0;
         PlayTrack(currentTrackIndex);
-    }
-
-    public void UnlockBonusTrack(int trackNumber)
-    {
-        var trackName = $"bonus_{trackNumber}.mp3";
-        // Check if the track exists and isn't already in the playlist
-        if (this.allMusicTracks.Contains(trackName) && !this.bgmPlaylist.Contains(trackName))
-        {
-            this.bgmPlaylist.Add(trackName);
-            // Add the track number to the configuration and save it
-            if (!this.configuration.UnlockedBonusTracks.Contains(trackNumber))
-            {
-                this.configuration.UnlockedBonusTracks.Add(trackNumber); 
-                this.configuration.Save();
-            }
-        }
     }
 
     public void PlayNextTrack()
