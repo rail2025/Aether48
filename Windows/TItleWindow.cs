@@ -128,7 +128,7 @@ public class TitleWindow : Window, IDisposable
     {
         // Invisible button for interaction
         bool clicked = ImGui.Button($"##{id}", size);
-        if (clicked) _plugin.AudioManager.PlaySfx("advance.wav"); // Used existing SFX
+        if (clicked) _plugin.AudioManager.PlaySfx("advance.wav");
 
         // Manual Drawing
         var drawList = ImGui.GetWindowDrawList();

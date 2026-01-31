@@ -88,7 +88,6 @@ public class TextAnimation
     /// Updates the animation's state for the current frame.
     /// </summary>
     /// <returns>True if the animation is still ongoing; otherwise, false.</returns>
-    // CHANGE: The Update method now correctly accepts a deltaTime parameter.
     public bool Update(float deltaTime)
     {
         // For animations that move, update their position based on velocity and frame time.

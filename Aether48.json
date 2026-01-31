@@ -3,11 +3,11 @@
     "Name": "Aether48",
     "Punchline": "A game to play when dead. A 2048 clone mini-game.",
     "Description": "Opens on death, or /a48. A 2048 clone mini-game.",
-    "Changelog": "v0.0.0.1:Initial release.",
+    "Changelog": "v0.1.0.1: clean up assets\nv0.0.0.1:Initial release.",
     "IsHide": false,
     "InternalName": "AetherGon",
-    "AssemblyVersion": "0.0.0.1",
-    "TestingAssemblyVersion": "0.0.0.1",
+    "AssemblyVersion": "0.1.0.1",
+    "TestingAssemblyVersion": "0.1.0.1",
     "IsTestingExclusive": false,
     "RepoUrl": "https://github.com/rail2025/Aether48",
     "ApplicableVersion": "any",
@@ -15,6 +15,6 @@
         "game",
         "death",
         "idle",
-        "gon"
+        "2048"
     ]
 }
