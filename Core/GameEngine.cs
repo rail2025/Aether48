@@ -56,6 +56,8 @@ public class GameEngine : IGridDataSource, IDisposable
 
         var moved = false;
         var scoreIncrease = 0;
+        var turnHasMerge = false;
+        var turnHasCollision = false;
 
         PrepareTiles();
 
@@ -87,10 +89,17 @@ public class GameEngine : IGridDataSource, IDisposable
                     cell.PreviousPosition = (next.X, next.Y);
                     scoreIncrease += merged.Value;
                     moved = true;
+                    turnHasMerge = true;
                 }
                 else
                 {
                     if (farthest.X == x && farthest.Y == y) continue;
+
+                    // If we moved, check if we stopped because of a collision with another tile
+                    if (Grid.IsWithinBounds(next.X, next.Y))
+                    {
+                        turnHasCollision = true;
+                    }
 
                     Grid[farthest.X, farthest.Y] = cell;
                     Grid[x, y] = null;
@@ -107,6 +116,8 @@ public class GameEngine : IGridDataSource, IDisposable
                 _config.HighScore = Score;
                 _config.Save();
             }
+
+            _eventBus.Publish(new GameInteractionEvent(turnHasMerge, turnHasCollision));
 
             SpawnTile();
             PublishUpdate();

@@ -7,3 +7,5 @@ public record struct GridUpdatedEvent(int[,] GridValues, int Score, int HighScor
 public record struct GameOverEvent(bool IsWin, int FinalScore);
 
 public record struct GameResetEvent;
+
+public record struct GameInteractionEvent(bool HasMerge, bool HasCollision);

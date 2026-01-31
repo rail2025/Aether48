@@ -2,7 +2,7 @@ using Aether48.Core;
 using Aether48.Core.Events;
 using Aether48.Foundation;
 using Aether48.UI;
-using Aether48.Audio; // Added namespace
+using Aether48.Audio;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using System;
@@ -16,6 +16,7 @@ public class MainWindow : Window, IDisposable
     private readonly ThemeManager _themeManager;
     private readonly AudioManager _audioManager;
     private readonly EventBus _eventBus;
+    private readonly Configuration _configuration;
 
     private const float GridPadding = 10f;
     private const float CellSpacing = 8f;
@@ -27,6 +28,7 @@ public class MainWindow : Window, IDisposable
         _themeManager = plugin.Services.Get<ThemeManager>();
         _audioManager = plugin.Services.Get<AudioManager>();
         _eventBus = plugin.Services.Get<EventBus>();
+        _configuration = plugin.Services.Get<Configuration>();
 
         SizeConstraints = new WindowSizeConstraints
         {
@@ -61,7 +63,7 @@ public class MainWindow : Window, IDisposable
         var scoreText = $"Score: {_dataSource.Score}";
         var highText = $"Best: {_dataSource.HighScore}";
 
-        ImGui.TextColored(_themeManager.BoardText, "2048");
+        ImGui.TextColored(_themeManager.BoardText, "");
 
         var availWidth = ImGui.GetContentRegionAvail().X;
         var scoreWidth = ImGui.CalcTextSize(scoreText).X;
@@ -91,6 +93,40 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.Spacing();
+        ImGui.Separator();
+
+        var muteBgm = _configuration.IsBgmMuted;
+        if (ImGui.Checkbox("BGM", ref muteBgm))
+        {
+            _configuration.IsBgmMuted = muteBgm;
+            _audioManager.UpdateBgmState();
+            _configuration.Save();
+        }
+
+        ImGui.SameLine();
+        var muteSfx = _configuration.IsSfxMuted;
+        if (ImGui.Checkbox("SFX", ref muteSfx))
+        {
+            _configuration.IsSfxMuted = muteSfx;
+            _configuration.Save();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.ArrowButton("##prev", ImGuiDir.Left)) _audioManager.PlayPreviousTrack();
+
+        ImGui.SameLine();
+        if (ImGui.ArrowButton("##next", ImGuiDir.Right)) _audioManager.PlayNextTrack();
+
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+
+        var vol = _configuration.MusicVolume;
+        if (ImGui.SliderFloat("##vol", ref vol, 0.0f, 1.0f, "Vol %.2f"))
+        {
+            _configuration.MusicVolume = vol;
+            _audioManager.SetMusicVolume(vol);
+            _configuration.Save();
+        }
     }
 
     private void DrawGrid()

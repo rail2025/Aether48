@@ -26,6 +26,8 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <Content Include="repo.json" />
+    <EmbeddedResource Include="Sfx\advance.wav" />
+    <EmbeddedResource Include="Sfx\pop.wav" />
   </ItemGroup>
 
   <ItemGroup>
