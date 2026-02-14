@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
 using System.Reflection;
+using System.Collections.Concurrent;
 
 namespace Aether48.UI;
 
@@ -15,9 +16,7 @@ public class TextureManager : IDisposable
     private readonly ITextureProvider _textureProvider;
     private readonly IPluginLog _log;
 
-    private readonly List<IDalamudTextureWrap> _backgroundTextures = new();
-    private readonly Dictionary<int, IDalamudTextureWrap> _bubbleTextures = new();
-    private readonly Dictionary<string, IDalamudTextureWrap?> _iconTextures = new();
+    private readonly ConcurrentDictionary<string, IDalamudTextureWrap?> _iconTextures = new();
 
     public TextureManager(ITextureProvider textureProvider, IPluginLog log)
     {
@@ -52,7 +51,7 @@ public class TextureManager : IDisposable
                         using var ms = new MemoryStream();
                         await stream.CopyToAsync(ms);
                         var texture = await _textureProvider.CreateFromImageAsync(ms.ToArray());
-_iconTextures[name] = texture;
+                        _iconTextures[name] = texture;
                     }
                 }
             }
@@ -66,10 +65,6 @@ _iconTextures[name] = texture;
     }
     public void Dispose()
     {
-        foreach (var tex in _backgroundTextures) tex.Dispose();
-        foreach (var tex in _bubbleTextures.Values) tex.Dispose();
-        _backgroundTextures.Clear();
-        _bubbleTextures.Clear();
         foreach (var tex in _iconTextures.Values) tex?.Dispose();
         _iconTextures.Clear();
     }

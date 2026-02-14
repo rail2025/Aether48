@@ -38,12 +38,17 @@ public class InputPollingService : IDisposable
     private void OnUpdate(IFramework framework)
     {
         var window = _windowSystem.Windows.FirstOrDefault(w => w.WindowName == "Aether48");
-        if (window is not { IsOpen: true }) return;
+        if (window is not { IsOpen: true, IsFocused: true }) return;
 
         bool isUp = IsKeyPressed(VirtualKey.UP) || IsKeyPressed(VirtualKey.W);
         bool isDown = IsKeyPressed(VirtualKey.DOWN) || IsKeyPressed(VirtualKey.S);
         bool isLeft = IsKeyPressed(VirtualKey.LEFT) || IsKeyPressed(VirtualKey.A);
         bool isRight = IsKeyPressed(VirtualKey.RIGHT) || IsKeyPressed(VirtualKey.D);
+
+        if (isUp || isDown || isLeft || isRight)
+        {
+            _keyState.ClearAll();
+        }
 
         if (isUp && !_wasUp) RaiseMove(MoveDirection.Up);
         else if (isDown && !_wasDown) RaiseMove(MoveDirection.Down);

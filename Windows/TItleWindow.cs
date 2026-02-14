@@ -1,8 +1,10 @@
-using System;
-using System.Numerics;
+using Aether48.Audio;
 using Aether48.UI;
-using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Windowing;
+using System;
+using System.Linq;
+using System.Numerics;
 
 namespace Aether48.Windows;
 
@@ -28,6 +30,15 @@ public class TitleWindow : Window, IDisposable
     }
 
     public void Dispose() { }
+    public override void OnClose()
+    {
+        var mainWindow = _plugin.WindowSystem.Windows.FirstOrDefault(w => w.WindowName == "Aether48");
+        if (mainWindow is not { IsOpen: true })
+        {
+            _plugin.AudioManager.EndPlaylist();
+        }
+        base.OnClose();
+    }
 
     public override void Draw()
     {

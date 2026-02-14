@@ -99,6 +99,8 @@ public class AudioManager : IDisposable
 
     public void StartBgmPlaylist()
     {
+        if (this.isBgmPlaying) return;
+
         this.bgmPlaylist.Clear();
         var defaultTracks = this.allMusicTracks.Where(t => !t.StartsWith("bonus_")).ToList();
         this.bgmPlaylist.AddRange(defaultTracks);
